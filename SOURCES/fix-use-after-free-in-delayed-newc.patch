@@ -1,0 +1,78 @@
+From 6a71cce7ed735f83f9a6a6bad8beaa47f8d14734 Mon Sep 17 00:00:00 2001
+From: Ondrej Dubaj <odubaj@redhat.com>
+Date: Mon, 27 May 2019 10:06:14 +0200
+Subject: [PATCH 1/2] Fix use-after-free in delayed link processing (newc
+ format)
+
+During archiving, if some of the "delayed" hard link entries
+happened to disappear on filesystem (or become unreadable) for
+some reason (most probably race), the old code free()d the 'entry'
+and continued with the loop;  the next loop though dereferenced
+'entry' and crashed the archiver.
+
+Per report from Coverity.
+---
+ tar/write.c | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/tar/write.c b/tar/write.c
+index 9c24566..3970de2 100644
+--- a/tar/write.c
++++ b/tar/write.c
+@@ -540,8 +540,7 @@ write_archive(struct archive *a, struct bsdtar *bsdtar)
+ 			lafe_warnc(archive_errno(disk),
+ 			    "%s", archive_error_string(disk));
+ 			bsdtar->return_value = 1;
+-			archive_entry_free(entry);
+-			continue;
++			goto next_entry;
+ 		}
+ 
+ 		/*
+@@ -559,13 +558,13 @@ write_archive(struct archive *a, struct bsdtar *bsdtar)
+ 				bsdtar->return_value = 1;
+ 			else
+ 				archive_read_close(disk);
+-			archive_entry_free(entry);
+-			continue;
++			goto next_entry;
+ 		}
+ 
+ 		write_file(bsdtar, a, entry);
+-		archive_entry_free(entry);
+ 		archive_read_close(disk);
++next_entry:
++		archive_entry_free(entry);
+ 		entry = NULL;
+ 		archive_entry_linkify(bsdtar->resolver, &entry, &sparse_entry);
+ 	}
+-- 
+2.17.1
+
+
+From a999ca882aeb8fce4f4f2ee1317f528984b47e8e Mon Sep 17 00:00:00 2001
+From: Ondrej Dubaj <odubaj@redhat.com>
+Date: Mon, 27 May 2019 10:34:48 +0200
+Subject: [PATCH 2/2] call missing archive_read_close() in write_archive()
+
+---
+ tar/write.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/tar/write.c b/tar/write.c
+index 3970de2..63c619c 100644
+--- a/tar/write.c
++++ b/tar/write.c
+@@ -556,8 +556,7 @@ write_archive(struct archive *a, struct bsdtar *bsdtar)
+ 			    "%s", archive_error_string(disk));
+ 			if (r == ARCHIVE_FATAL)
+ 				bsdtar->return_value = 1;
+-			else
+-				archive_read_close(disk);
++			archive_read_close(disk);
+ 			goto next_entry;
+ 		}
+ 
+-- 
+2.17.1
+
