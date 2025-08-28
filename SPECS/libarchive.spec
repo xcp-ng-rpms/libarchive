@@ -2,7 +2,7 @@
 
 Name:           libarchive
 Version:        3.3.3
-Release:        1%{?dist}
+Release:        1.1%{?dist}
 Summary:        A library for handling streaming archive formats
 
 License:        BSD
@@ -49,6 +49,8 @@ read ISO9660 CDROM images and ZIP archives.
 %package devel
 Summary:        Development files for %{name}
 Requires:       %{name}%{?_isa} = %{version}-%{release}
+
+%ldconfig_scriptlets
 
 %description devel
 The %{name}-devel package contains libraries and header files for
@@ -225,6 +227,9 @@ run_testsuite
 
 
 %changelog
+* Thu Aug 28 2025 Yann Dirson <yann.dirson@vates.tech> - 3.3.3-1.1
+- Refresh ldconfig cache on installation/removal
+
 * Thu Apr 30 2020 Ondrej Dubaj <odubaj@redhat.com> - 3.3.3-1
 - Rebase to version 3.3.3
 
