@@ -1,0 +1,29 @@
+From ec97aebcd2a3c4ed3a2fbb0037364b349bf9e84a Mon Sep 17 00:00:00 2001
+From: Stephen Gallagher <sgallagh@redhat.com>
+Date: Fri, 3 Dec 2021 11:07:55 -0500
+Subject: [PATCH] Drop rmd160 from OpenSSL
+
+Signed-off-by: Stephen Gallagher <sgallagh@redhat.com>
+---
+ configure.ac | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/configure.ac b/configure.ac
+index cb89c3ee81530e63e18f12aec2bbf04e8c0a1a34..b4d8ceabba4131a93589c0cf6bcd29bed8bdc774 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1205,11 +1205,10 @@ if test "x$with_openssl" != "xno"; then
+       *)
+         AC_CHECK_LIB(crypto,OPENSSL_config)
+         ;;
+     esac
+     CRYPTO_CHECK(MD5, OPENSSL, md5)
+-    CRYPTO_CHECK(RMD160, OPENSSL, rmd160)
+     CRYPTO_CHECK(SHA1, OPENSSL, sha1)
+     CRYPTO_CHECK(SHA256, OPENSSL, sha256)
+     CRYPTO_CHECK(SHA384, OPENSSL, sha384)
+     CRYPTO_CHECK(SHA512, OPENSSL, sha512)
+     AC_CHECK_FUNCS([PKCS5_PBKDF2_HMAC_SHA1])
+-- 
+2.33.1
+
