@@ -2,7 +2,7 @@
 
 Name:           libarchive
 Version:        3.6.1
-Release:        4.0%{?dist}
+Release:        4.1%{?dist}
 Summary:        A library for handling streaming archive formats
 
 License:        BSD
@@ -227,7 +227,9 @@ run_testsuite
 
 
 %changelog
-* Tue Feb 10 2026 Philippe Coval <philippe.coval@vates.tech> - 3.6.1-4.0
+
+* Tue Feb 10 2026 Philippe Coval <philippe.coval@vates.tech> - 3.6.1-4.1
+- Rebuild with openssl-3
 - Reapply changes from 3.3.3-1.1 on upstream base 3.6.1-4
   * Thu Aug 28 2025 Yann Dirson <yann.dirson@vates.tech> - 3.3.3-1.1
   - Refresh ldconfig cache on installation/removal
