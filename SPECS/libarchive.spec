@@ -2,7 +2,7 @@
 
 Name:           libarchive
 Version:        3.6.1
-Release:        4.1%{?dist}
+Release:        4.1~XCPNG2710.4%{?dist}
 Summary:        A library for handling streaming archive formats
 
 License:        BSD
