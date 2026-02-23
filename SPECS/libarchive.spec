@@ -1,42 +1,45 @@
 %bcond_without check
 
 Name:           libarchive
-Version:        3.3.3
-Release:        1.1%{?dist}
+Version:        3.6.1
+Release:        4.1%{?dist}
 Summary:        A library for handling streaming archive formats
 
 License:        BSD
-URL:            http://www.libarchive.org/
-Source0:        http://www.libarchive.org/downloads/%{name}-%{version}.tar.gz
+URL:            https://www.libarchive.org/
+Source0:        https://libarchive.org/downloads/%{name}-%{version}.tar.gz
 
-Patch1:        libarchive-3.1.2-CVE-2019-1000019.patch
-Patch2:        libarchive-3.1.2-CVE-2019-1000020.patch
-Patch3:        libarchive-3.3.2-CVE-2018-1000878.patch
-Patch4:        libarchive-3.3.2-CVE-2018-1000877.patch
-Patch5:        fix-use-after-free-in-delayed-newc.patch
-Patch6:        fix-few-obvious-resource-leaks-covscan.patch
-Patch7:        libarchive-3.3.2-CVE-2019-18408.patch
-Patch8:        libarchive-3.3.2-CVE-2019-19221.patch
-# upstream reference
-# https://github.com/libarchive/libarchive/commit/aaacc8762fd8ced8823350edd8ce2e46b565582b#diff-bc144884a8e634e16f247e0588a266ee
-Patch9:        libarchive-3.3.3-fixed-zstd_test.patch
-
-
-BuildRequires:  gcc
+BuildRequires:  autoconf
+BuildRequires:  automake
 BuildRequires:  bison
-BuildRequires:  sharutils
-BuildRequires:  zlib-devel
 BuildRequires:  bzip2-devel
-BuildRequires:  xz-devel
-BuildRequires:  lzo-devel
 BuildRequires:  e2fsprogs-devel
+BuildRequires:  gcc
 BuildRequires:  libacl-devel
 BuildRequires:  libattr-devel
-BuildRequires:  openssl-devel
+BuildRequires:  libtool
 BuildRequires:  libxml2-devel
-BuildRequires:  lz4-devel
-BuildRequires:  automake
 BuildRequires:  libzstd-devel
+BuildRequires:  lz4-devel
+# According to libarchive maintainer, linking against liblzo violates
+# LZO license.
+# See https://github.com/libarchive/libarchive/releases/tag/v3.3.0
+#BuildRequires:  lzo-devel
+BuildRequires:  openssl-devel
+BuildRequires:  sharutils
+BuildRequires:  xz-devel
+BuildRequires:  zlib-devel
+BuildRequires: make
+
+# When configured against OpenSSL 1.1, the RIPEMD-160 support was not detected,
+# so it was not compiled in previously. With OpenSSL 3.0, it's now detected as
+# being available, but it only actually works when the legacy provider is
+# loaded, which breaks the RIPEMD-160 test. This patch disables the RIPEMD-160
+# support explicitly.
+Patch0001: 0001-Drop-rmd160-from-OpenSSL.patch
+
+# Source: https://github.com/libarchive/libarchive/commit/fd180c36036df7181a64931264732a10ad8cd024
+Patch2:                %{name}-3.6.1-Fix-CVE-2022-36227.patch
 
 
 %description
@@ -90,16 +93,13 @@ standard output.
 
 
 %build
-%configure --disable-static --disable-rpath
-# remove rpaths
-sed -i 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|g' libtool
-sed -i 's|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|g' libtool
-
-make %{?_smp_mflags}
+autoreconf -ifv
+%configure --disable-static LT_SYS_LIBRARY_PATH=%_libdir
+%make_build
 
 
 %install
-make install DESTDIR=$RPM_BUILD_ROOT
+%make_install
 find $RPM_BUILD_ROOT -name '*.la' -exec rm -f {} ';'
 
 # rhbz#1294252
@@ -161,7 +161,7 @@ cat_logs ()
 run_testsuite ()
 {
     rc=0
-    LD_LIBRARY_PATH=`pwd`/.libs make %{?_smp_mflags} check -j1 || {
+    %make_build check -j1 || {
         # error happened - try to extract in koji as much info as possible
         cat_logs
 
@@ -227,33 +227,107 @@ run_testsuite
 
 
 %changelog
-* Thu Aug 28 2025 Yann Dirson <yann.dirson@vates.tech> - 3.3.3-1.1
-- Refresh ldconfig cache on installation/removal
 
-* Thu Apr 30 2020 Ondrej Dubaj <odubaj@redhat.com> - 3.3.3-1
-- Rebase to version 3.3.3
+* Tue Feb 10 2026 Philippe Coval <philippe.coval@vates.tech> - 3.6.1-4.1
+- Rebuild with openssl-3
+- Reapply changes from 3.3.3-1.1 on upstream base 3.6.1-4
+  * Thu Aug 28 2025 Yann Dirson <yann.dirson@vates.tech> - 3.3.3-1.1
+  - Refresh ldconfig cache on installation/removal
+  * Thu Apr 30 2020 Ondrej Dubaj <odubaj@redhat.com> - 3.3.3-1
+  - Rebase to version 3.3.3
 
-* Tue Mar 24 2020 Ondrej Dubaj <odubaj@redhat.com> - 3.3.2-9
-- Fix out-of-bounds read (CVE-2019-19221) (#1803967)
+* Thu Jan 19 2023 Fedora Release Engineering <releng@fedoraproject.org> - 3.6.1-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_38_Mass_Rebuild
 
-* Wed Jan 15 2020 Patrik Novotný <panovotn@redhat.com> - 3.3.2-8
-- Fix CVE-2019-18408: RAR use-after-free
+* Fri Dec 02 2022 Lukas Javorsky <ljavorsk@redhat.com> - 3.6.1-3
+- Resolves: CVE-2022-36227
 
-* Mon May 27 2019 Ondrej Dubaj <odubaj@redhat.com> - 3.3.2-7
-- fix use-after-free in delayed newc link processing (#1602575)
-- fix a few obvious resource leaks and strcpy() misuses (#1602575)
+* Thu Jul 21 2022 Fedora Release Engineering <releng@fedoraproject.org> - 3.6.1-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_37_Mass_Rebuild
 
-* Tue Apr 30 2019 Ondrej Dubaj <odubaj@redhat.com> - 3.3.2-6
-- fixed use after free in RAR decoder (#1700752)
-- fixed double free in RAR decoder (#1700753)
+* Fri Apr 08 2022 Lukas Javorsky <ljavorsk@redhat.com> - 3.6.1-1
+- Rebase to version 3.6.1
+- Resolves: #2071934
 
-* Tue Apr 02 2019 Ondrej Dubaj <odubaj@redhat.com> - 3.3.2-5
-- release bump due to gating (#1680768)
+* Tue Feb 22 2022 Matej Mužila <mmuzila@redhat.com> - 3.6.0-1
+- Rebase to version 3.6.0
+- Resolves: #2051860
 
-* Fri Feb 22 2019 Pavel Raiskup <praiskup@redhat.com> - 3.3.2-4
-- fix out-of-bounds read within lha_read_data_none() (CVE-2017-14503)
-- fix crash on crafted 7zip archives (CVE-2019-1000019)
-- fix infinite loop in ISO9660 (CVE-2019-1000020)
+* Mon Feb 14 2022 Lukas Javorsky <ljavorsk@redhat.com> - 3.5.3-1
+- Rebase to version 3.5.3
+
+* Thu Jan 20 2022 Fedora Release Engineering <releng@fedoraproject.org> - 3.5.2-5
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_36_Mass_Rebuild
+
+* Fri Dec 03 2021 Stephen Gallagher <sgallagh@redhat.com> - 3.5.2-5
+- Drop RIPEMD-160 support for OpenSSL 3.0
+
+* Tue Sep 14 2021 Sahana Prasad <sahana@redhat.com> - 3.5.2-3
+- Rebuilt with OpenSSL 3.0.0
+
+* Mon Aug 30 2021 Ondrej Dubaj <odubaj@redhat.com> - 3.5.2-2
+- Fixed symlink handling
+
+* Mon Aug 23 2021 Ondrej Dubaj <odubaj@redhat.com> - 3.5.2-1
+- Rebased to version 3.5.2
+
+* Thu Jul 22 2021 Fedora Release Engineering <releng@fedoraproject.org> - 3.5.1-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_35_Mass_Rebuild
+
+* Tue Jan 26 2021 Fedora Release Engineering <releng@fedoraproject.org> - 3.5.1-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_34_Mass_Rebuild
+
+* Mon Jan 04 2021 Ondrej Dubaj <odubaj@redhat.com> - 3.5.1-1
+- Rebased to version 3.5.1
+
+* Wed Dec 02 2020 Ondrej Dubaj <odubaj@redhat.com> - 3.5.0-1
+- Rebased to version 3.5.0
+
+* Tue Jul 28 2020 Fedora Release Engineering <releng@fedoraproject.org> - 3.4.3-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_33_Mass_Rebuild
+
+* Mon Jul 13 2020 Tom Stellard <tstellar@redhat.com> - 3.4.3-2
+- Use make macros
+- https://fedoraproject.org/wiki/Changes/UseMakeBuildInstallMacro
+
+* Fri May 22 2020 Ondrej Dubaj <odubaj@redhat.com> - 3.4.3-1
+- Rebased to version 3.4.3
+
+* Wed Feb 12 2020 Ondrej Dubaj <odubaj@redhat.com> - 3.4.2-1
+- Rebased to version 3.4.2
+
+* Wed Jan 29 2020 Fedora Release Engineering <releng@fedoraproject.org> - 3.4.0-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_32_Mass_Rebuild
+
+* Fri Aug 30 2019 FeRD (Frank Dana) <ferdnyc@gmail.com> - 3.4.0-1
+- New upstream release, adds RAR5 and ZIPX support (readonly)
+- Drop upstreamed patches
+- Add upstreamed patch to fix test failure with libzstd-1.4.2
+
+* Thu Jul 25 2019 Fedora Release Engineering <releng@fedoraproject.org> - 3.3.3-8
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_31_Mass_Rebuild
+
+* Thu Mar 28 2019 Pavel Raiskup <praiskup@redhat.com> - 3.3.3-7
+- simplify libtool hacks
+
+* Tue Mar 19 2019 Ondrej Dubaj <odubaj@redhat.com> - 3.3.3-6
+- applied various flaws (#1663893)
+
+* Tue Mar 19 2019 Ondrej Dubaj <odubaj@redhat.com> - 3.3.3-5
+- applied CVE patches (#1690071)
+
+* Thu Mar 14 2019 Ondrej Dubaj <odubaj@redhat.com> - 3.3.3-4
+- applied various flaws (#1672900)
+
+* Fri Feb 01 2019 Fedora Release Engineering <releng@fedoraproject.org> - 3.3.3-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_30_Mass_Rebuild
+
+* Mon Nov 26 2018 Pavel Raiskup <praiskup@redhat.com> - 3.3.3-2
+- fix some covscan issues (rhbz#1602575)
+- build-requires libzstd-devel (rhbz#1653046)
+
+* Tue Oct 23 2018 Pavel Raiskup <praiskup@redhat.com> - 3.3.3-1
+- the latest upstream release
 
 * Wed Jul 18 2018 Pavel Raiskup <praiskup@redhat.com> - 3.3.2-3
 - drop use of %%ldconfig_scriptlets
